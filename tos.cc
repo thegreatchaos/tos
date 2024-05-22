@@ -40,6 +40,7 @@ int getFd(){
     addr.sin_port	=   htons(LISTEN_PORT);
 
     if(0 > bind(fd, (struct sockaddr*)&addr, sizeof(addr))){
+	perror("bind");
 	fprintf(stdout, "bind failure, %s:%d\n", __FILE__, __LINE__);
 	return -__LINE__;
     }
@@ -130,14 +131,22 @@ int main(int argc, char** argv){
 			{
 			    char host[1024];
 			    DevInfo di;
-			    size_t x = 1, y = 0;
-			    split(route, &x, host);
-			    ++x;
-			    split(route, &x, di.ip);
-			    ++x;
-			    split(route, &x, di.ts);
-			    sprintf(bBuf, "Registered:\nhost: %s\nip: %s\nLastUpdate: %s\n", host, di.ip, di.ts);
-			    host2Ip[host] = di;
+			    size_t x = 1, y = 0, z = 0;
+			    for(size_t i = 0; i < strlen(route); ++i){
+				if('/' == route[i])
+				    ++z;
+			    }
+			    if(3 == z){
+				split(route, &x, host);
+				++x;
+				split(route, &x, di.ip);
+				++x;
+				split(route, &x, di.ts);
+				sprintf(bBuf, "Registered:\nhost: %s\nip: %s\nLastUpdate: %s\n", host, di.ip, di.ts);
+				host2Ip[host] = di;
+			    }else{
+				sprintf(bBuf, "Bad Request: %s\n", route);
+			    }
 			}
 			break;
 		    case RT_PUL:
