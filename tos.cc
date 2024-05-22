@@ -25,6 +25,11 @@ typedef enum ReqType{
     RT_PUL,
     RT_MAX
 }ReqType;
+void getTs(char* buf){
+	time_t t = time(NULL);
+	struct tm lt = *localtime(&t);
+	sprintf(buf, "%.4d%.2d%.2d:%.2d%.2d%.2d", lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday, lt.tm_hour, lt.tm_min, lt.tm_sec);
+}
 int getFd(){
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if(0 > fd){
@@ -141,7 +146,10 @@ int main(int argc, char** argv){
 				++x;
 				split(route, &x, di.ip);
 				++x;
+				/*
 				split(route, &x, di.ts);
+				*/
+				getTs(di.ts);
 				sprintf(bBuf, "Registered:\nhost: %s\nip: %s\nLastUpdate: %s\n", host, di.ip, di.ts);
 				host2Ip[host] = di;
 			    }else{
@@ -150,14 +158,15 @@ int main(int argc, char** argv){
 			}
 			break;
 		    case RT_PUL:
-			sprintf(bBuf, "<table border=1px><tr><th>Hostname</th><th>Ip</th><th>LastUpdate</th></tr>");
+			char buf[1024]; getTs(buf);
+			sprintf(bBuf, "ServerTime: %s<hr><table border=1px><tr><th>Hostname</th><th>Ip</th><th>LastUpdate</th></tr>", buf);
 			for(auto& i : host2Ip){
 			    sprintf(bBuf + strlen(bBuf), "<tr><td>%s</td><td>%s</td><td>%s</td></tr>", i.first.c_str(), i.second.ip, i.second.ts);
 			}
 			sprintf(bBuf + strlen(bBuf), "</table>");
 			break;
 		    }
-		    sprintf(hBuf, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n", strlen(bBuf));
+		    sprintf(hBuf, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\nContent-Type: text/html\r\n\r\n", strlen(bBuf));
 		    write(clientFd, hBuf, strlen(hBuf));
 		    write(clientFd, bBuf, strlen(bBuf));
 		    close(clientFd);
