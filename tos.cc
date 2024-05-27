@@ -28,7 +28,7 @@ typedef enum ReqType{
 void getTs(char* buf){
 	time_t t = time(NULL);
 	struct tm lt = *localtime(&t);
-	sprintf(buf, "%.4d%.2d%.2d:%.2d%.2d%.2d", lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday, lt.tm_hour, lt.tm_min, lt.tm_sec);
+	sprintf(buf, "%.4d-%.2d-%.2d %.2d:%.2d:%.2d", lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday, lt.tm_hour, lt.tm_min, lt.tm_sec);
 }
 int getFd(){
     int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -147,13 +147,15 @@ int main(int argc, char** argv){
 				split(route, &x, di.ip);
 				++x;
 				char magic[1024];
+#define MAGIC_NUM "magic0x7777"
 				split(route, &x, magic);
-				if(!strcmp("magic0x7777", magic)){
+				fprintf(stdout, "reg: host: %s,  ip: %s, magic: %s\n", host, di.ip, magic);
+				if(0 == memcmp(MAGIC_NUM, magic, strlen(MAGIC_NUM))){
 				    getTs(di.ts);
 				    sprintf(bBuf, "Registered:\nhost: %s\nip: %s\nLastUpdate: %s\n", host, di.ip, di.ts);
 				    host2Ip[host] = di;
 				}else{
-				    sprintf(bBuf, "Invalid Magic num\n");
+				    sprintf(bBuf, "Invalid Magic num: %s(%s expected). %d<>%d\n", magic, MAGIC_NUM, strlen(magic), strlen(MAGIC_NUM));
 				}
 			    }else{
 				sprintf(bBuf, "Bad Request: %s\n", route);
