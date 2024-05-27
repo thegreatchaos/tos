@@ -146,12 +146,15 @@ int main(int argc, char** argv){
 				++x;
 				split(route, &x, di.ip);
 				++x;
-				/*
-				split(route, &x, di.ts);
-				*/
-				getTs(di.ts);
-				sprintf(bBuf, "Registered:\nhost: %s\nip: %s\nLastUpdate: %s\n", host, di.ip, di.ts);
-				host2Ip[host] = di;
+				char magic[1024];
+				split(route, &x, magic);
+				if(!strcmp("magic0x7777", magic)){
+				    getTs(di.ts);
+				    sprintf(bBuf, "Registered:\nhost: %s\nip: %s\nLastUpdate: %s\n", host, di.ip, di.ts);
+				    host2Ip[host] = di;
+				}else{
+				    sprintf(bBuf, "Invalid Magic num\n");
+				}
 			    }else{
 				sprintf(bBuf, "Bad Request: %s\n", route);
 			    }
