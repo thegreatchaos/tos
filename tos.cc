@@ -194,7 +194,7 @@ int main(int argc, char** argv){
 	{
 	    time_t cur = time(NULL);
 	    for(auto it = host2Ip.begin(); host2Ip.end() != it;){
-		if(it->second.ts > cur - FORGET_INTERVAL){
+		if(it->second.ts < cur - FORGET_INTERVAL){
 		    host2Ip.erase(it);
 		}else{
 		    ++it;
