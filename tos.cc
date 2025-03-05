@@ -15,9 +15,12 @@
 #define BACKLOG		1024
 #define LISTEN_PORT	7777
 #define MAX_EPOLL_NUM	4096
+
+#define FORGET_INTERVAL	600
+
 typedef struct DevInfo{
     char	ip[1024];
-    char	ts[1024];
+    time_t	ts;
 }DevInfo;
 typedef std::unordered_map<std::string, DevInfo> StrMap;
 typedef enum ReqType{
@@ -25,6 +28,10 @@ typedef enum ReqType{
     RT_PUL,
     RT_MAX
 }ReqType;
+void time_t2str(time_t* t, char* buf){
+    struct tm lt = *localtime(t);
+    sprintf(buf, "%.4d-%.2d-%.2d %.2d:%.2d:%.2d", lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday, lt.tm_hour, lt.tm_min, lt.tm_sec);
+}
 void getTs(char* buf){
 	time_t t = time(NULL);
 	struct tm lt = *localtime(&t);
@@ -93,6 +100,7 @@ int main(int argc, char** argv){
     StrMap  host2Ip;
     char* hBuf = (char*)malloc(1024);
     char* bBuf = (char*)malloc(8 * 1024 * 1024);
+    time_t lastCheck = time(NULL);
     while(true){
 	int activeFdsCount = epoll_wait(epollFd, rwEvt, MAX_EPOLL_NUM, -1);
 	//fprintf(stdout, "%d active count currently\n", activeFdsCount);
@@ -151,8 +159,10 @@ int main(int argc, char** argv){
 				split(route, &x, magic);
 				fprintf(stdout, "reg: host: %s,  ip: %s, magic: %s\n", host, di.ip, magic);
 				if(0 == memcmp(MAGIC_NUM, magic, strlen(MAGIC_NUM))){
-				    getTs(di.ts);
-				    sprintf(bBuf, "Registered:\nhost: %s\nip: %s\nLastUpdate: %s\n", host, di.ip, di.ts);
+				    di.ts = time(NULL);
+				    char ts[1024]; 
+				    time_t2str(&(di.ts), ts);
+				    sprintf(bBuf, "Registered:\nhost: %s\nip: %s\nLastUpdate: %s\n", host, di.ip, ts);
 				    host2Ip[host] = di;
 				}else{
 				    sprintf(bBuf, "Invalid Magic num: %s(%s expected). %d<>%d\n", magic, MAGIC_NUM, strlen(magic), strlen(MAGIC_NUM));
@@ -164,9 +174,10 @@ int main(int argc, char** argv){
 			break;
 		    case RT_PUL:
 			char buf[1024]; getTs(buf);
-			sprintf(bBuf, "ServerTime: %s<hr><table border=1px><tr><th>Hostname</th><th>Ip</th><th>LastUpdate</th></tr>", buf);
+			sprintf(bBuf, "ServerTime: %s. Clients registered within last %d secs<hr><table border=1px><tr><th>Hostname</th><th>Ip</th><th>LastUpdate</th></tr>", buf, FORGET_INTERVAL);
 			for(auto& i : host2Ip){
-			    sprintf(bBuf + strlen(bBuf), "<tr><td>%s</td><td>%s</td><td>%s</td></tr>", i.first.c_str(), i.second.ip, i.second.ts);
+			    time_t2str(&(i.second.ts), buf);
+			    sprintf(bBuf + strlen(bBuf), "<tr><td>%s</td><td>%s</td><td>%s</td></tr>", i.first.c_str(), i.second.ip, buf);
 			}
 			sprintf(bBuf + strlen(bBuf), "</table>");
 			break;
@@ -177,6 +188,17 @@ int main(int argc, char** argv){
 		    close(clientFd);
 		}
 	    }else if(rwEvt[i].events & EPOLLOUT){/// ready for writing
+	    }
+	}
+
+	{
+	    time_t cur = time(NULL);
+	    for(auto it = host2Ip.begin(); host2Ip.end() != it;){
+		if(it->second.ts > cur - FORGET_INTERVAL){
+		    host2Ip.erase(it);
+		}else{
+		    ++it;
+		}
 	    }
 	}
     }
